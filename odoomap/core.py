@@ -1,10 +1,12 @@
 import argparse
 import sys
 import os
+from urllib.parse import urljoin, urlparse, urlunparse
+
+from . import __version__
 from . import connect
 from . import actions
 from .colors import Colors
-from urllib.parse import urljoin, urlparse, urlunparse
 
 
 def banner():
@@ -17,13 +19,13 @@ _______________________________________________________________
          \___/ \__,_|\___/ \___/|_| |_| |_|\__,_| .__/ 
                                                 |_|  
 _______________________________________________________________
-''' + Colors.ENDC + r'''
+''' + Colors.ENDC + f'''
         Odoo Security Scanner by Mohamed Karrab @_karrab
-        Version 1.2.4
+        Version {__version__}
     ''' 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='Odoo Security Assessment Tool')
+    parser = argparse.ArgumentParser(prog='odoomap', description='Odoo Security Assessment Tool')
     
     # Target specification
     parser.add_argument('-u', '--url', required=True, help='Target Odoo server URL')
@@ -216,7 +218,3 @@ def main():
             output_file = os.path.join(output_dir, f"{model_name}.json")
             print(f"{Colors.i} Dumping {model_name} to {output_file}")
             actions.dump_model(connection, model_name, limit=args.limit, output_file=output_file)
-
-
-if __name__ == '__main__':
-    main()
