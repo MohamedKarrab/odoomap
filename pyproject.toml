@@ -1,6 +1,5 @@
 [project]
 name = "odoomap"
-version = "1.2.4"
 description = "Odoo Security Assessment Tool"
 authors = [{ name = "Mohamed Karrab" }]
 license = "Apache-2.0"
@@ -10,17 +9,15 @@ dependencies = [
     "beautifulsoup4>=4.9,<5"
 ]
 requires-python = ">=3.9"
-
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-packages = ["src"] 
-include-package-data = true
-
-[tool.setuptools.package-data]
-src = ["data/*"] 
+dynamic = ["version"]
 
 [project.scripts]
-odoomap = "src.core:main" 
+odoomap = "odoomap.core:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+# Can be replaced with hatch-vcs
+path = "odoomap/__init__.py"

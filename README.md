@@ -30,18 +30,8 @@
 ## Installation
 > :information_source: It is advisable to use `pipx` over `pip` for system-wide installations.
 ```bash
-git clone https://github.com/MohamedKarrab/odoomap.git && cd odoomap
-pipx ensurepath && pipx install .
-
-# Now restart your terminal and run
+pip install git+https://github.com/MohamedKarrab/odoomap
 odoomap -h
-```
-*Or*
-```bash
-git clone https://github.com/MohamedKarrab/odoomap.git
-cd odoomap
-pip install -r requirements.txt
-python odoomap.py -h
 ```
 
 ## Usage Examples
