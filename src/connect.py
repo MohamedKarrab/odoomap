@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from src.colors import Colors
 from urllib.parse import urljoin
 from importlib.resources import files
+from src.utils import save_results
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -100,18 +101,23 @@ class Connection:
             return False
 
         found_databases = []
-        for db in databases:
-            try:
-                uid = self.common.authenticate(db, "test_user", "test_pass", {})
-                if uid == False:
-                    print(f"\n{Colors.s} Found DB: {db}\n")
-                    found_databases.append(db)
-            except Exception as e:
-                if "failed: FATAL:  database" in str(e) and "does not exist" in str(e):
-                    print(f"{Colors.e} Database {Colors.FAIL}{db}{Colors.ENDC} does not exist")
-                else:
-                    print(f"{Colors.e} Error occured while testing database {db}: {str(e)}")
-
+        try:
+            for db in databases:
+                try:
+                    uid = self.common.authenticate(db, "test_user", "test_pass", {})
+                    if uid == False:
+                        print(f"\n{Colors.s} Found DB: {db}\n")
+                        found_databases.append(db)
+                except Exception as e:
+                    if "failed: FATAL:  database" in str(e) and "does not exist" in str(e):
+                        print(f"{Colors.e} Database {Colors.FAIL}{db}{Colors.ENDC} does not exist")
+                    else:
+                        print(f"{Colors.e} Error occured while testing database {db}: {str(e)}")
+        except KeyboardInterrupt:
+            print(f"{Colors.w} Bruteforce interrupted by user")
+            save_results(found_databases, len(found_databases), header=["Database Name"])
+            
+            
         if found_databases:
             print(f"{Colors.s} Found {len(found_databases)} valid database(s): {', '.join(found_databases)}")
             return True
@@ -213,17 +219,21 @@ class Connection:
 
         success_count = 0
         successful_creds = []
-
-        for username, password in user_pass_pairs:
-            try:
-                print(f"{Colors.i} Trying {username}:{password}")
-                uid = self.authenticate(db, username, password)
-                if uid:
-                    print(f"{Colors.s} SUCCESS: {username}:{password} (uid: {uid})")
-                    successful_creds.append((username, password))  # Store successful creds
-                    success_count += 1
-            except Exception as e:
-                print(f"{Colors.e} Error with {username}:{password}: {str(e)}")
+        # Iterate through user:pass pairs
+        try:
+            for username, password in user_pass_pairs:
+                try:
+                    print(f"{Colors.i} Trying {username}:{password}")
+                    uid = self.authenticate(db, username, password)
+                    if uid:
+                        print(f"{Colors.s} SUCCESS: {username}:{password} (uid: {uid})")
+                        successful_creds.append((username, password))  # Store successful creds
+                        success_count += 1
+                except Exception as e:
+                    print(f"{Colors.e} Error with {username}:{password}: {str(e)}")
+        except KeyboardInterrupt:
+            print(f"{Colors.w} Bruteforce interrupted by user")
+            save_results(successful_creds, success_count, header=["Username", "Password"])
 
         if success_count > 0:
             print(f"{Colors.s} Found {success_count} valid credential(s)")
