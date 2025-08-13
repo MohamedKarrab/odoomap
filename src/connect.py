@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from src.colors import Colors
 from urllib.parse import urljoin
 from importlib.resources import files
+import json
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -56,7 +57,33 @@ class Connection:
             return databases
         except Exception as e:
             print(f"{Colors.e} Error listing databases: {str(e)}")
-            return []
+            print(f"{Colors.i} Falling back to JSON-RPC method...")
+        
+        try:
+            jsonrpc_endpoint = f"{self.host}/web/database/list"
+            headers = {"Content-Type": "application/json"}
+            payload = {
+                "jsonrpc": "2.0",
+                "method": "call",
+                "params": {}
+            }
+
+            verify_ssl = self.ssl_verify
+            response = requests.post(
+                jsonrpc_endpoint,
+                headers=headers,
+                data=json.dumps(payload),
+                verify=verify_ssl
+            )
+
+            if response.status_code == 200:
+                result = response.json().get("result")
+                if isinstance(result, list) and result:
+                    return result
+        except Exception as e:
+            print(f"{Colors.e} JSON-RPC DB list failed: {e}")
+            
+        return []
     
     def authenticate(self, db, username, password):
         """Authenticate to Odoo"""
