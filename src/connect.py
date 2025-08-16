@@ -81,7 +81,7 @@ class Connection:
                 if isinstance(result, list) and result:
                     return result
         except Exception as e:
-            print(f"{Colors.e} JSON-RPC DB list failed: {e}")
+            print(f"{Colors.e} JSON-RPC DB listing failed: {e}")
             
         return []
     
