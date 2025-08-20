@@ -4,7 +4,9 @@ import os
 from . import connect
 from . import actions
 from .colors import Colors
+from .plugin_loader import load_plugin # import plugin loader
 from urllib.parse import urljoin, urlparse, urlunparse
+
 
 
 def banner():
@@ -58,6 +60,9 @@ def parse_arguments():
     # bruteforce database names
     parser.add_argument('-n','--brute-db-names', action='store_true', help='Bruteforce database names')
     parser.add_argument('-N','--db-names-file', help='File containing database names for bruteforcing (case-sensitive)')
+
+    # plugin execution
+    parser.add_argument('--plugin', help='Run a specific plugin by name (from src/plugin/)')
 
     args = parser.parse_args()
     
@@ -229,6 +234,47 @@ def main():
             print(f"{Colors.i} Dumping {model_name} to {output_file}")
             actions.dump_model(connection, model_name, limit=args.limit, output_file=output_file)
 
+     # load plugins 
+    if args.plugin:
+        plugins = load_plugin()   # load all available plugins, returns dict
+
+        if not plugins:
+            print(f"{Colors.e} No plugins found in src/plugins/")
+            sys.exit(1)
+
+        if args.plugin in plugins:
+            plugin_instance = plugins[args.plugin]   # get the selected plugin
+            
+            '''
+            plugin_instance.run(...) → calls the plugin’s main function.
+            Each plugin is a separate module/class that defines a run() method.
+            This is where your plugin actually performs its scan or analysis on the target Odoo instance.
+            try/except → error handling:
+            Plugins can fail for many reasons (network errors, wrong URL, missing credentials, coding bugs).
+            Wrapping it in try/except ensures your whole OdooMap script doesn’t crash when a plugin fails.
+            Instead, it prints a friendly error message.
+            '''
+            try:
+                result = plugin_instance.run(
+                # Essentially, you’re passing all the necessary connection/auth information so the plugin can interact with the Odoo instance.
+                    args.url,
+                    database=args.database,
+                    username=args.username,
+                    password=args.password 
+                    # add args that plugins might need.
+                )
+                print(f"{Colors.s} Plugin '{args.plugin}' finished. Result:\n{result}")
+            except Exception as e:
+                print(f"{Colors.e} Error running plugin '{args.plugin}': {str(e)}")
+                sys.exit(1)
+        else:
+            print(f"{Colors.e} Plugin '{args.plugin}' not found in src/plugins/")
+            available = ", ".join(plugins.keys())
+            if available:
+                print(f"{Colors.i} Available plugins: {available}")
+            else:
+                print(f"{Colors.w} No plugins are currently installed.")
+            sys.exit(1)
 
 if __name__ == '__main__':
     main()
