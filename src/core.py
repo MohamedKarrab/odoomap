@@ -257,10 +257,11 @@ def main():
             try:
                 result = plugin_instance.run(
                 # Essentially, you’re passing all the necessary connection/auth information so the plugin can interact with the Odoo instance.
-                    args.url,
+                    args.url, 
                     database=args.database,
                     username=args.username,
-                    password=args.password 
+                    password=args.password,
+                    connection=connection
                     # add args that plugins might need.
                 )
                 print(f"{Colors.s} Plugin '{args.plugin}' finished. Result:\n{result}")
