@@ -1,6 +1,5 @@
 from enum import Enum
 from ..colors import Colors
-from ..connect import Connection
 from packaging.version import Version
 from .plugin_base import BasePlugin, PluginMetadata, PluginCategory
 
@@ -128,7 +127,7 @@ class Plugin(BasePlugin):
             print(f"{Colors.e} Target is not vulnerable")
             return "Failed"
 
-        elif vulnerability_status is VulnerableStatus.UNKNOWN:
+        if vulnerability_status is VulnerableStatus.UNKNOWN:
             print(f"{Colors.w} Unable to recover the version of the target", end=", ")
         else:
             print(f"{Colors.s} Target is vulnerable", end=", ")
