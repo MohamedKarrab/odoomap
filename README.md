@@ -1,5 +1,5 @@
 <div align="center">
-  <a><img width="320" height="320" alt="odoomap logo-min" src="https://github.com/user-attachments/assets/f55b8312-227e-4db8-82a6-300271758555" />
+  <a><img width="320" height="320" alt="odoomap logo" src="https://github.com/user-attachments/assets/f55b8312-227e-4db8-82a6-300271758555" />
 </a>
 </div>
 
@@ -22,10 +22,11 @@
 - Extract data from specific models
 - Brute-force login credentials & Master password
 - Brute-force internal model names
+- Extensible plugin system for security assessments
 
 ## Screenshots
 
-<img width="967" height="492" alt="image" src="https://github.com/user-attachments/assets/e95c3eee-a665-4690-a4dd-36f1c4d8dbe3" />
+<img width="967" height="492" alt="odoomap usage" src="https://github.com/user-attachments/assets/e95c3eee-a665-4690-a4dd-36f1c4d8dbe3" />
 
 ## Installation
 > :information_source: It is advisable to use `pipx` over `pip` for system-wide installations.
@@ -61,7 +62,7 @@ odoomap -u https://example.com -D database_name -U admin -P pass -e -l 200 -o mo
 #### Check Model Permissions (Read, Write, Create, Delete)
 
 ```bash
-odoomap -u https://example.com -D database_name -U test@example.com -P pass -e -pe -l 10
+odoomap -u https://example.com -D database_name -U test@example.com -P pass -e -p -l 10
 ```
 
 #### Dump Data from Specific Models
@@ -120,15 +121,34 @@ odoomap -u https://example.com -D database_name -U admin -P pass -e -B --model-f
 #### Recon + Enumeration + Dump
 
 ```bash
-odoomap -u https://example.com -D database_name -U admin -P pass -r -e -pe -d res.users -o ./output
+odoomap -u https://example.com -D database_name -U admin -P pass -r -e -p -d res.users -o ./output
+```
+
+## Plugin System
+
+#### List Available Plugins
+
+```bash
+odoomap --list-plugins
+```
+
+#### Run CVE Scanner Plugin
+
+```bash
+odoomap -u https://example.com --plugin cve-scanner
+```
+
+#### Run Plugin with Authentication
+
+```bash
+odoomap -u https://example.com -D database_name -U admin -P pass --plugin cve-scanner
 ```
 
 
 ## Full Usage
 
 ```
-usage: odoomap.py [-h] -u URL [-D DATABASE] [-U USERNAME] [-P PASSWORD] [-r] [-e] [-pe] [-l LIMIT] [-o OUTPUT] [-d DUMP] [-B] [--model-file MODEL_FILE] [-b]
-                  [-w WORDLIST] [--usernames USERNAMES] [--passwords PASSWORDS] [-M] [-p MASTER_PASS] [-n] [-N DB_NAMES_FILE]
+usage: odoomap [-h] [-u URL] [-D DATABASE] [-U USERNAME] [-P PASSWORD] [-r] [-e] [-pe] [-l LIMIT] [-o OUTPUT] [-d DUMP] [-B] [--model-file MODEL_FILE] [-b] [-w WORDLIST] [--usernames USERNAMES] [--passwords PASSWORDS] [-M] [-p MASTER_PASS] [-n] [-N DB_NAMES_FILE] [--plugin PLUGIN] [--list-plugins]
 
 Odoo Security Assessment Tool
 
@@ -146,7 +166,7 @@ options:
   -pe, --permissions    Enumerate model permissions (requires -e)
   -l, --limit LIMIT     Limit results for enumeration or dump operations
   -o, --output OUTPUT   Output file for results
-  -d, --dump DUMP       Dump data from specified model(s); accepts a comma-separated list or a file path containing model names (one per line)
+  -d, --dump DUMP       Dump data from specified model(s); accepts a comma-separated list or a file path containing model names (one per line)   
   -B, --bruteforce-models
                         Bruteforce model names instead of listing them (default if listing fails)
   --model-file MODEL_FILE
@@ -165,8 +185,26 @@ options:
   -n, --brute-db-names  Bruteforce database names
   -N, --db-names-file DB_NAMES_FILE
                         File containing database names for bruteforcing (case-sensitive)
+  --plugin PLUGIN       Run a specific plugin by name (from src/plugin/)
+  --list-plugins        List all available plugins with metadata
                         
 ```
+
+## Plugin Development
+
+OdooMap features an extensible plugin system for custom security assessments. Plugins are located in `src/plugins/` and follow a standardized interface.
+
+### Built-in Plugins
+
+- **CVE Scanner**: Searches for known CVEs affecting the detected Odoo version using the NVD database
+
+### Creating Custom Plugins
+
+1. Create a new Python file in `src/plugins/`
+2. Inherit from `BasePlugin` class
+3. Implement required methods:
+   - `get_metadata()`: Return plugin information
+   - `run()`: Main plugin logic
 
 ## License
 

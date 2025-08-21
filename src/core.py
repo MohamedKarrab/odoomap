@@ -4,7 +4,7 @@ import os
 from . import connect
 from . import actions
 from .colors import Colors
-from .plugin_loader import load_plugin # import plugin loader
+from .plugin_manager import load_specific_plugin, list_available_plugins, get_plugin_info
 from urllib.parse import urljoin, urlparse, urlunparse
 
 
@@ -28,7 +28,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Odoo Security Assessment Tool')
     
     # Target specification
-    parser.add_argument('-u', '--url', required=True, help='Target Odoo server URL')
+    parser.add_argument('-u', '--url', help='Target Odoo server URL')
     
     # Authentication
     parser.add_argument('-D', '--database', help='Target database name')
@@ -62,9 +62,14 @@ def parse_arguments():
     parser.add_argument('-N','--db-names-file', help='File containing database names for bruteforcing (case-sensitive)')
 
     # plugin execution
-    parser.add_argument('--plugin', help='Run a specific plugin by name (from src/plugin/)')
+    parser.add_argument('--plugin', help='Run a specific plugin by name (from src/plugins/)')
+    parser.add_argument('--list-plugins', action='store_true', help='List all available plugins with metadata')
 
     args = parser.parse_args()
+    
+    # Validate URL requirement (not needed for --list-plugins)
+    if not args.list_plugins and not args.url:
+        parser.error("the following arguments are required: -u/--url (except when using --list-plugins)")
     
     # Validate argument combinations
     if args.permissions and not args.enumerate:
@@ -78,12 +83,34 @@ def parse_arguments():
 def main():
     args = parse_arguments()
 
+    # Handle --list-plugins early (no connection needed)
+    if args.list_plugins:
+        plugins_info = get_plugin_info()
+        if not plugins_info:
+            print(f"{Colors.w} No plugins found in src/plugins/")
+            return
+        
+        print(f"{Colors.s} Available Plugins:\n")
+        for plugin_name, info in plugins_info.items():
+            print(f"{Colors.i} {info['name']} ({plugin_name}) v{info['version']}")
+            print(f"    Author: {info['author']}")
+            print(f"    Category: {info['category']}")
+            print(f"    Description: {info['description']}")
+            print(f"    Requires Auth: {'Yes' if info['requires_auth'] else 'No'}")
+            print(f"    Requires Connection: {'Yes' if info['requires_connection'] else 'No'}")
+            if info['external_dependencies']:
+                print(f"    Dependencies: {', '.join(info['external_dependencies'])}")
+            if 'error' in info:
+                print(f"    {Colors.e} Error: {info['error']}")
+            print()
+        return
+
     # Check if we have all authentication parameters
     has_auth_params = args.username and args.password and args.database
     auth_required_ops = args.enumerate or args.dump or args.permissions or args.bruteforce_models
 
     # Check if any action is specified (besides recon)
-    any_action = args.enumerate or args.dump or args.bruteforce or args.permissions or args.bruteforce_models or args.bruteforce_master or args.brute_db_names
+    any_action = args.enumerate or args.dump or args.bruteforce or args.permissions or args.bruteforce_models or args.bruteforce_master or args.brute_db_names or args.plugin or args.list_plugins
 
     # Determine if recon should be performed
     do_recon = args.recon or not any_action
@@ -234,47 +261,30 @@ def main():
             print(f"{Colors.i} Dumping {model_name} to {output_file}")
             actions.dump_model(connection, model_name, limit=args.limit, output_file=output_file)
 
-     # load plugins 
-    if args.plugin:
-        plugins = load_plugin()   # load all available plugins, returns dict
 
-        if not plugins:
-            print(f"{Colors.e} No plugins found in src/plugins/")
+    if args.plugin:
+        try:
+            plugin_instance = load_specific_plugin(args.plugin)
+        except ValueError as e:
+            print(f"{Colors.e} {e}")
+            available = list_available_plugins()
+            print(f"{Colors.i} Available plugins: {', '.join(available)}")
             sys.exit(1)
 
-        if args.plugin in plugins:
-            plugin_instance = plugins[args.plugin]   # get the selected plugin
-            
-            '''
-            plugin_instance.run(...) → calls the plugin’s main function.
-            Each plugin is a separate module/class that defines a run() method.
-            This is where your plugin actually performs its scan or analysis on the target Odoo instance.
-            try/except → error handling:
-            Plugins can fail for many reasons (network errors, wrong URL, missing credentials, coding bugs).
-            Wrapping it in try/except ensures your whole OdooMap script doesn’t crash when a plugin fails.
-            Instead, it prints a friendly error message.
-            '''
-            try:
-                result = plugin_instance.run(
-                # Essentially, you’re passing all the necessary connection/auth information so the plugin can interact with the Odoo instance.
-                    args.url, 
-                    database=args.database,
-                    username=args.username,
-                    password=args.password,
-                    connection=connection
-                    # add args that plugins might need.
-                )
-                print(f"{Colors.s} Plugin '{args.plugin}' finished. Result:\n{result}")
-            except Exception as e:
-                print(f"{Colors.e} Error running plugin '{args.plugin}': {str(e)}")
-                sys.exit(1)
-        else:
-            print(f"{Colors.e} Plugin '{args.plugin}' not found in src/plugins/")
-            available = ", ".join(plugins.keys())
-            if available:
-                print(f"{Colors.i} Available plugins: {available}")
-            else:
-                print(f"{Colors.w} No plugins are currently installed.")
+        try:
+            result = plugin_instance.run(
+            # Passing all the necessary connection/auth information.
+                args.url, 
+                database=args.database,
+                username=args.username,
+                password=args.password,
+                connection=connection
+                # add args that plugins might need.
+            )
+            print(f"{Colors.s} Plugin '{args.plugin}' finished. Result:\n{result}")
+
+        except Exception as e:
+            print(f"{Colors.e} Error running plugin '{args.plugin}': {str(e)}")
             sys.exit(1)
 
 if __name__ == '__main__':

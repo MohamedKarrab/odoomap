@@ -7,7 +7,8 @@ license = "Apache-2.0"
 readme = "README.md"
 dependencies = [
     "requests>=2.25,<3",
-    "beautifulsoup4>=4.9,<5"
+    "beautifulsoup4>=4.9,<5",
+    "colorama>=0.4.0"
 ]
 requires-python = ">=3.9"
 
@@ -16,11 +17,11 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["src"] 
+packages = ["src", "src.plugins"] 
 include-package-data = true
 
 [tool.setuptools.package-data]
-src = ["data/*"] 
+src = ["data/*", "plugins/*"] 
 
 [project.scripts]
 odoomap = "src.core:main" 
