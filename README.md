@@ -62,7 +62,7 @@ odoomap -u https://example.com -D database_name -U admin -P pass -e -l 200 -o mo
 #### Check Model Permissions (Read, Write, Create, Delete)
 
 ```bash
-odoomap -u https://example.com -D database_name -U test@example.com -P pass -e -p -l 10
+odoomap -u https://example.com -D database_name -U test@example.com -P pass -e -pe -l 10
 ```
 
 #### Dump Data from Specific Models
@@ -121,7 +121,7 @@ odoomap -u https://example.com -D database_name -U admin -P pass -e -B --model-f
 #### Recon + Enumeration + Dump
 
 ```bash
-odoomap -u https://example.com -D database_name -U admin -P pass -r -e -p -d res.users -o ./output
+odoomap -u https://example.com -D database_name -U admin -P pass -r -e -pe -d res.users -o ./output
 ```
 
 ## Plugin System
