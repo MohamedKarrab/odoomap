@@ -36,6 +36,9 @@ pipx ensurepath && pipx install .
 
 # Now restart your terminal and run
 odoomap -h
+
+# To update:
+pipx upgrade odoomap
 ```
 *Or*
 ```bash
