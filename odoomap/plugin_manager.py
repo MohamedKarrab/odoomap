@@ -15,10 +15,10 @@ def load_specific_plugin(plugin_name):
     try:
         # Try relative import first (for development)
         try:
-            module = importlib.import_module(f".plugins.{plugin_name}", package="src")
+            module = importlib.import_module(f".plugins.{plugin_name}", package="odoomap")
         except ImportError:
             # Fallback to absolute import (for installed package)
-            module = importlib.import_module(f"src.plugins.{plugin_name}")
+            module = importlib.import_module(f"odoomap.plugins.{plugin_name}")
         return module.Plugin()
     except (ImportError, AttributeError) as e:
         raise ValueError(f"Could not load plugin '{plugin_name}': {e}")
@@ -37,9 +37,9 @@ def get_plugin_info() -> Dict[str, Any]:
             try:
                 # Quick load to get metadata using same import logic
                 try:
-                    module = importlib.import_module(f".plugins.{name}", package="src")
+                    module = importlib.import_module(f".plugins.{name}", package="odoomap")
                 except ImportError:
-                    module = importlib.import_module(f"src.plugins.{name}")
+                    module = importlib.import_module(f"odoomap.plugins.{name}")
                 plugin_instance = module.Plugin()
                 
                 if hasattr(plugin_instance, 'metadata'):

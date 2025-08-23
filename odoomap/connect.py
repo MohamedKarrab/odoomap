@@ -5,7 +5,7 @@ import ssl
 import urllib3
 import os
 from bs4 import BeautifulSoup
-from src.colors import Colors
+from odoomap.colors import Colors
 from urllib.parse import urljoin
 from importlib.resources import files
 import json
@@ -158,10 +158,10 @@ class Connection:
         user_pass_pairs = []
 
         try:
-            usernames_text = files("src.data").joinpath("default_usernames.txt").read_text(encoding='utf-8', errors='ignore')
+            usernames_text = files("odoomap.data").joinpath("default_usernames.txt").read_text(encoding='utf-8', errors='ignore')
             usernames = [line.strip() for line in usernames_text.splitlines() if line.strip()]
 
-            passwords_text = files("src.data").joinpath("default_passwords.txt").read_text(encoding='utf-8', errors='ignore')
+            passwords_text = files("odoomap.data").joinpath("default_passwords.txt").read_text(encoding='utf-8', errors='ignore')
             passwords = [line.strip() for line in passwords_text.splitlines() if line.strip()]
 
         except Exception as e:

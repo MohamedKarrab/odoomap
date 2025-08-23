@@ -62,7 +62,7 @@ def parse_arguments():
     parser.add_argument('-N','--db-names-file', help='File containing database names for bruteforcing (case-sensitive)')
 
     # plugin execution
-    parser.add_argument('--plugin', help='Run a specific plugin by name (from src/plugins/)')
+    parser.add_argument('--plugin', help='Run a specific plugin by name (from odoomap/plugins/)')
     parser.add_argument('--list-plugins', action='store_true', help='List all available plugins with metadata')
 
     args = parser.parse_args()
@@ -87,7 +87,7 @@ def main():
     if args.list_plugins:
         plugins_info = get_plugin_info()
         if not plugins_info:
-            print(f"{Colors.w} No plugins found in src/plugins/")
+            print(f"{Colors.w} No plugins found in odoomap/plugins/")
             return
         
         print(f"{Colors.s} Available Plugins:\n")

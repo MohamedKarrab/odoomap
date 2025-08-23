@@ -17,11 +17,11 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["src", "src.plugins"] 
+packages = ["odoomap", "odoomap.plugins"] 
 include-package-data = true
 
 [tool.setuptools.package-data]
-src = ["data/*", "plugins/*"] 
+odoomap = ["data/*", "plugins/*"] 
 
 [project.scripts]
-odoomap = "src.core:main" 
+odoomap = "odoomap.core:main" 

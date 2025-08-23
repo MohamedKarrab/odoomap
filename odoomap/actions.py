@@ -1,7 +1,7 @@
 import os
 import sys
 from importlib.resources import files
-from src.colors import Colors
+from odoomap.colors import Colors
 import xmlrpc.client
 
 directory = os.getcwd()      
@@ -137,7 +137,7 @@ def bruteforce_models(connection, model_file, limit=100, with_permissions=False)
     else:
         print(f"{Colors.i} Using default model list for bruteforce")
         try:
-            models_text = files("src.data").joinpath("default_models.txt").read_text(encoding="utf-8")
+            models_text = files("odoomap.data").joinpath("default_models.txt").read_text(encoding="utf-8")
             model_list = [line.strip() for line in models_text.splitlines() if line.strip()]
         except Exception as e:
             print(f"{Colors.e} Error reading default models file: {str(e)}")

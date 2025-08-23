@@ -185,14 +185,14 @@ options:
   -n, --brute-db-names  Bruteforce database names
   -N, --db-names-file DB_NAMES_FILE
                         File containing database names for bruteforcing (case-sensitive)
-  --plugin PLUGIN       Run a specific plugin by name (from src/plugin/)
+  --plugin PLUGIN       Run a specific plugin by name (from odoomap/plugins/)
   --list-plugins        List all available plugins with metadata
                         
 ```
 
 ## Plugin Development
 
-OdooMap features an extensible plugin system for custom security assessments. Plugins are located in `src/plugins/` and follow a standardized interface.
+OdooMap features an extensible plugin system for custom security assessments. Plugins are located in `odoomap/plugins/` and follow a standardized interface.
 
 ### Built-in Plugins
 
@@ -200,7 +200,7 @@ OdooMap features an extensible plugin system for custom security assessments. Pl
 
 ### Creating Custom Plugins
 
-1. Create a new Python file in `src/plugins/`
+1. Create a new Python file in `odoomap/plugins/`
 2. Inherit from `BasePlugin` class
 3. Implement required methods:
    - `get_metadata()`: Return plugin information
