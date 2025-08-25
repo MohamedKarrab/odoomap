@@ -54,7 +54,7 @@ class Plugin(BasePlugin):
         min_v = cls.parse_version(cls.MIN_VERSION)
         max_v = cls.parse_version(cls.MAX_VERSION)
 
-        return min_v < version <= max_v
+        return min_v <= version < max_v
 
     @staticmethod
     def get_payload():
