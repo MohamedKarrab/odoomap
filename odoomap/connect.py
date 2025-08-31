@@ -5,11 +5,11 @@ import ssl
 import urllib3
 import os
 from bs4 import BeautifulSoup
-from odoomap.colors import Colors
+from odoomap.utils.colors import Colors
 from urllib.parse import urljoin
 from importlib.resources import files
 import json
-from .brute_display import BruteDisplay
+from .utils.brute_display import BruteDisplay
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -132,26 +132,30 @@ class Connection:
             print(f"{Colors.e} Error reading database names file: {str(e)}")
             return False
 
+        print(f"{Colors.s} Loaded {len(databases)} database names from {db_names_file}")
+        print(f"{Colors.i} Starting database name bruteforce with {len(databases)} candidates")
+
+        total = len(databases)
+        display = BruteDisplay(total)
         found_databases = []
+
+        print("")
         for db in databases:
+            display.update(f"{Colors.t} {db}")
             try:
                 uid = self.common.authenticate(db, "test_user", "test_pass", {})
                 if uid == False:
-                    print(f"\n{Colors.s} Found DB: {db}\n")
+                    display.add_success(f"{db}")
                     found_databases.append(db)
             except Exception as e:
-                if "failed: FATAL:  database" in str(e) and "does not exist" in str(e):
-                    print(f"{Colors.e} Database {Colors.FAIL}{db}{Colors.ENDC} does not exist")
+                if "FATAL:  database" in str(e) and "does not exist" in str(e):
+                    pass
                 else:
-                    print(f"{Colors.e} Error occured while testing database {db}: {str(e)}")
+                    display.add_error(f"{db} -> {str(e)}")
 
-        if found_databases:
-            print(f"{Colors.s} Found {len(found_databases)} valid database(s): {', '.join(found_databases)}")
-            return True
-        else:
-            print(f"{Colors.e} No valid databases found")
-            return False
-    
+        display.stop()
+
+        return found_databases
 
     def bruteforce_login(self, db, wordlist_file=None, usernames_file=None, passwords_file=None):
         if not db:
@@ -200,6 +204,10 @@ class Connection:
             except Exception as e:
                 print(f"{Colors.e} Error reading wordlist file: {str(e)}")
                 print(f"{Colors.i} Using default lists")
+
+            if not user_pass_pairs:
+                print(f"{Colors.e} No valid user:pass pairs found in {wordlist_file}, Exiting...")
+                sys.exit(1)
 
         # sanitize & unique
         usernames = list(dict.fromkeys(self.sanitize_for_xmlrpc(u).strip() for u in usernames if u.strip()))

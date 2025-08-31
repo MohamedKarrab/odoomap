@@ -1,6 +1,6 @@
 from enum import Enum
 import re
-from ..colors import Colors
+from ..utils.colors import Colors
 from .plugin_base import BasePlugin, PluginMetadata, PluginCategory
 
 class VulnerableStatus(Enum):

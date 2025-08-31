@@ -23,7 +23,8 @@ packages = ["odoomap"]
 [tool.hatch.build]
 include = [
     "odoomap/data/*",
-    "odoomap/plugins/*"
+    "odoomap/plugins/*",
+    "odoomap/utils/*"
 ]
 
 [project.scripts]

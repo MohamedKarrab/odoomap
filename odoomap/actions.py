@@ -2,9 +2,9 @@ import os
 import sys
 from importlib.resources import files
 from pathlib import Path
-from odoomap.colors import Colors
+from odoomap.utils.colors import Colors
 import xmlrpc.client
-from .brute_display import BruteDisplay, console
+from .utils.brute_display import BruteDisplay, console
 
 directory = os.getcwd()      
 
