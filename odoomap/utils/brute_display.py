@@ -27,7 +27,7 @@ class BruteDisplay:
         text.append(f"{current_try}\n", style="white")
         text.append(f"{attempts}", style="white")
         text.append(f"/{self.total} ", style="white")
-        text.append(f"({percent:.1f}%)", style="bold yellow")
+        text.append(f"({percent:.1f}%)", style="yellow")
         text.append(" | ")
         text.append(f"{rps:.2f}", style="bold magenta")
         text.append(" req/s | ")

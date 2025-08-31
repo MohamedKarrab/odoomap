@@ -1,19 +1,25 @@
 import argparse
 import sys
 import os
+import signal
 from . import connect
 from . import actions
 from . import __version__
 from .utils.colors import Colors
 from .plugin_manager import load_specific_plugin, list_available_plugins, get_plugin_info
-from urllib.parse import urljoin, urlparse, urlunparse
-import signal
+from urllib.parse import urlparse, urlunparse
+from rich.console import Console
 
-def _on_sigint(signum, frame):
-    print(f"\n{Colors.w} Interrupted by user. Exiting...")
+console = Console()
+
+def on_sigint(signum, frame):
+    console.print("\n[yellow][!][/yellow] [white]Interrupted by user. Exiting...[/white]")
+
+    console.show_cursor(show=True)
+    
     sys.exit(0)
 
-signal.signal(signal.SIGINT, _on_sigint)
+signal.signal(signal.SIGINT, on_sigint)
 
 def banner():
     return Colors.HEADER + r'''

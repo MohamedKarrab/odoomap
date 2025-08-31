@@ -27,6 +27,10 @@
 ## Screenshots
 
 <img width="967" height="492" alt="odoomap usage" src="https://github.com/user-attachments/assets/e95c3eee-a665-4690-a4dd-36f1c4d8dbe3" />
+<p></p>
+cve-scanner plugin:
+
+<img width="1610" height="776" alt="Pasted image 20250831151646" src="https://github.com/user-attachments/assets/51ac477c-4883-4a51-abc7-8c09e6acad80" />
 
 ## Installation
 > :information_source: It is advisable to use `pipx` over `pip` for system-wide installations.

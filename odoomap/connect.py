@@ -203,7 +203,7 @@ class Connection:
                             user_pass_pairs.append((user, pwd))
             except Exception as e:
                 print(f"{Colors.e} Error reading wordlist file: {str(e)}")
-                print(f"{Colors.i} Using default lists")
+                sys.exit(1)
 
             if not user_pass_pairs:
                 print(f"{Colors.e} No valid user:pass pairs found in {wordlist_file}, Exiting...")
