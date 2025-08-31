@@ -244,6 +244,7 @@ class Connection:
                 uid = self.authenticate(db, username, password, verbose=False)
                 if uid:
                     display.add_success(f"{username}:{password} (uid: {uid})\n")
+                        
             except Exception as e:
                 display.add_error(f"{username}:{password} -> {e}")
 
