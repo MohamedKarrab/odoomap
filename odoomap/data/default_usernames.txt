@@ -3,3 +3,4 @@ demo
 user
 odoo
 administrator
+test

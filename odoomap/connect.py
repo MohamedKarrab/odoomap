@@ -9,6 +9,7 @@ from odoomap.colors import Colors
 from urllib.parse import urljoin
 from importlib.resources import files
 import json
+from .brute_display import BruteDisplay
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -85,9 +86,10 @@ class Connection:
             
         return []
     
-    def authenticate(self, db, username, password):
+    def authenticate(self, db, username, password, verbose=True):
         """Authenticate to Odoo"""
-        print(f"{Colors.i} Authenticating as {username} on {db}...")
+        if verbose:
+            print(f"{Colors.i} Authenticating as {username} on {db}...")
         try:
             uid = self.common.authenticate(db, username, password, {})
             if uid:
@@ -96,18 +98,22 @@ class Connection:
                 self.db = db
                 self.models = xmlrpc.client.ServerProxy(self.object_endpoint, 
                                                      context=ssl._create_unverified_context() if not self.ssl_verify else None)
-                print(f"{Colors.s} Authentication successful (uid: {uid})")
+                if verbose:
+                    print(f"{Colors.s} Authentication successful (uid: {uid})")
                 return uid
             
             else:
-                print(f"{Colors.e} Authentication failed")
+                if verbose:
+                    print(f"{Colors.e} Authentication failed")
             return None
         
         except Exception as e:
             if "failed: FATAL:  database" in str(e) and "does not exist" in str(e):
-                print(f"{Colors.e} Authentication failed: database {Colors.FAIL}{db}{Colors.ENDC} does not exist")
+                if verbose:
+                    print(f"{Colors.e} Authentication failed: database {Colors.FAIL}{db}{Colors.ENDC} does not exist")
             else:
-                print(f"{Colors.e} Authentication error: {str(e)}")
+                if verbose:
+                    print(f"{Colors.e} Authentication error: {str(e)}")
             return None
     
     def sanitize_for_xmlrpc(self, text):
@@ -148,14 +154,11 @@ class Connection:
     
 
     def bruteforce_login(self, db, wordlist_file=None, usernames_file=None, passwords_file=None):
-        """Bruteforce login using default or custom wordlist"""
         if not db:
             print(f"{Colors.e} No database specified for bruteforce")
             return False
 
-        usernames = []
-        passwords = []
-        user_pass_pairs = []
+        usernames, passwords, user_pass_pairs = [], [], []
 
         try:
             usernames_text = files("odoomap.data").joinpath("default_usernames.txt").read_text(encoding='utf-8', errors='ignore')
@@ -163,12 +166,10 @@ class Connection:
 
             passwords_text = files("odoomap.data").joinpath("default_passwords.txt").read_text(encoding='utf-8', errors='ignore')
             passwords = [line.strip() for line in passwords_text.splitlines() if line.strip()]
-
         except Exception as e:
             print(f"{Colors.e} Error reading default credentials files: {str(e)}")
             sys.exit(1)
 
-        # Load username list if provided
         if usernames_file:
             try:
                 with open(usernames_file, 'r', encoding='utf-8', errors='ignore') as f:
@@ -178,7 +179,6 @@ class Connection:
                 print(f"{Colors.e} Error reading usernames file: {str(e)}")
                 sys.exit(1)
 
-        # Load password list if provided
         if passwords_file:
             try:
                 with open(passwords_file, 'r', encoding='utf-8', errors='ignore') as f:
@@ -188,7 +188,6 @@ class Connection:
                 print(f"{Colors.e} Error reading passwords file: {str(e)}")
                 sys.exit(1)
 
-        # Load wordlist file if provided (user:pass format takes precedence)
         if wordlist_file:
             try:
                 with open(wordlist_file, 'r', encoding='utf-8', errors='ignore') as f:
@@ -202,14 +201,11 @@ class Connection:
                 print(f"{Colors.e} Error reading wordlist file: {str(e)}")
                 print(f"{Colors.i} Using default lists")
 
-        # Ensure usernames and passwords are sanitized, stripped, and unique
-        # Using dict to maintain order and ensure uniqueness
+        # sanitize & unique
         usernames = list(dict.fromkeys(self.sanitize_for_xmlrpc(u).strip() for u in usernames if u.strip()))
-
         passwords = list(dict.fromkeys(self.sanitize_for_xmlrpc(p).strip() for p in passwords if p.strip()))
-
         user_pass_pairs = list(dict.fromkeys(
-            (self.sanitize_for_xmlrpc(u).strip(), self.sanitize_for_xmlrpc(p).strip()) 
+            (self.sanitize_for_xmlrpc(u).strip(), self.sanitize_for_xmlrpc(p).strip())
             for u, p in user_pass_pairs if u.strip() and p.strip()
         ))
 
@@ -228,9 +224,9 @@ class Connection:
                 print(f"{Colors.s} Loaded {len(passwords)} unique passwords from {passwords_file}")
             else:
                 print(f"{Colors.s} Using {len(passwords)} default passwords")
-            
+
             user_pass_pairs = list(dict.fromkeys(
-                (self.sanitize_for_xmlrpc(u).strip(), self.sanitize_for_xmlrpc(p).strip()) 
+                (self.sanitize_for_xmlrpc(u).strip(), self.sanitize_for_xmlrpc(p).strip())
                 for u in usernames for p in passwords if u and p
             ))
         else:
@@ -238,30 +234,22 @@ class Connection:
 
         print(f"{Colors.i} Starting bruteforce with {len(user_pass_pairs)} credential pairs")
 
-        success_count = 0
-        successful_creds = []
+        total = len(user_pass_pairs)
+        display = BruteDisplay(total)
 
+        print("")
         for username, password in user_pass_pairs:
+            display.update(f"{Colors.t} {username}:{password}")
             try:
-                print(f"{Colors.i} Trying {username}:{password}")
-                uid = self.authenticate(db, username, password)
+                uid = self.authenticate(db, username, password, verbose=False)
                 if uid:
-                    print(f"{Colors.s} SUCCESS: {username}:{password} (uid: {uid})")
-                    successful_creds.append((username, password))  # Store successful creds
-                    success_count += 1
+                    display.add_success(f"{username}:{password} (uid: {uid})\n")
             except Exception as e:
-                print(f"{Colors.e} Error with {username}:{password}: {str(e)}")
+                display.add_error(f"{username}:{password} -> {e}")
 
-        if success_count > 0:
-            print(f"{Colors.s} Found {success_count} valid credential(s)")
-            print(f"{Colors.s} Successful credentials:")
-            for username, password in successful_creds:
-                print(f"   {username}:{password}")
-            return True
-        else:
-            print(f"{Colors.e} No valid credentials found")
-            return False
-    
+        display.stop()
+        return len(display.successes) > 0
+
     def registration_check(self):
         """
         Detect whether self‑host exposes any anonymous signup page.

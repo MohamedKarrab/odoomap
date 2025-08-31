@@ -13,3 +13,4 @@ class Colors:
     s = SUCCESS = f"{OKGREEN}[+]{ENDC}"
     e = ERROR = f"{FAIL}[-]{ENDC}"
     w = WARN = f"{WARNING}[!]{ENDC}"
+    t = TRYING = f"{OKCYAN}[>]{ENDC}"

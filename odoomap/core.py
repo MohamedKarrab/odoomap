@@ -288,5 +288,9 @@ def main():
             print(f"{Colors.e} Error running plugin '{args.plugin}': {str(e)}")
             sys.exit(1)
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(f"\n{Colors.w} Interrupted by user. Exiting...")
+        sys.exit(0)
