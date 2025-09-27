@@ -59,8 +59,13 @@ def get_models(connection, limit=100, with_permissions=False, bruteforce=False, 
                 models = total_models
             except Exception as e:
                 print(f"{Colors.e} Error listing models: {str(e)}")
-                print(f"{Colors.i} Falling back to bruteforce method...")
-                bruteforce = True
+                response = input(f"{Colors.i} Fall back to bruteforce method? [y/N]: ").strip().lower()
+                if response == 'y' or response == 'yes':
+                    print(f"{Colors.i} Falling back to bruteforce method...")
+                    bruteforce = True
+                else:
+                    print(f"{Colors.e} Aborting model enumeration.")
+                    sys.exit(1)
         
         # If bruteforce is enabled or standard listing failed
         if bruteforce:

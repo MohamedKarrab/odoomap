@@ -155,7 +155,7 @@ odoomap -u https://example.com -D database_name -U admin -P pass --plugin cve-sc
 ## Full Usage
 
 ```
-usage: odoomap [-h] [-u URL] [-D DATABASE] [-U USERNAME] [-P PASSWORD] [-r] [-e] [-pe] [-l LIMIT] [-o OUTPUT] [-d DUMP] [-B] [--model-file MODEL_FILE] [-b] [-w WORDLIST] [--usernames USERNAMES] [--passwords PASSWORDS] [-M] [-p MASTER_PASS] [-n] [-N DB_NAMES_FILE] [--plugin PLUGIN] [--list-plugins]
+usage: odoomap.py [-h] [-u URL] [-D DATABASE] [-U USERNAME] [-P [PASSWORD]] [-r] [-e] [-pe] [-l LIMIT] [-o OUTPUT] [-d DUMP] [-B] [--model-file MODEL_FILE] [-b] [-w WORDLIST] [--usernames USERNAMES] [--passwords PASSWORDS] [-M] [-p MASTER_PASS] [-n] [-N DB_NAMES_FILE] [--plugin PLUGIN] [--list-plugins]        
 
 Odoo Security Assessment Tool
 
@@ -166,14 +166,14 @@ options:
                         Target database name
   -U, --username USERNAME
                         Username for authentication
-  -P, --password PASSWORD
-                        Password for authentication
+  -P, --password [PASSWORD]
+                        Password for authentication (prompts securely if no value provided)
   -r, --recon           Perform initial reconnaissance
   -e, --enumerate       Enumerate available model names
   -pe, --permissions    Enumerate model permissions (requires -e)
   -l, --limit LIMIT     Limit results for enumeration or dump operations
   -o, --output OUTPUT   Output file for results
-  -d, --dump DUMP       Dump data from specified model(s); accepts a comma-separated list or a file path containing model names (one per line)   
+  -d, --dump DUMP       Dump data from specified model(s); accepts a comma-separated list or a file path containing model names (one per line)
   -B, --bruteforce-models
                         Bruteforce model names instead of listing them (default if listing fails)
   --model-file MODEL_FILE
@@ -194,7 +194,6 @@ options:
                         File containing database names for bruteforcing (case-sensitive)
   --plugin PLUGIN       Run a specific plugin by name (from odoomap/plugins/)
   --list-plugins        List all available plugins with metadata
-                        
 ```
 
 ## Plugin Development

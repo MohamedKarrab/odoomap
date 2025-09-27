@@ -156,7 +156,7 @@ def main():
         version = connection.get_version()
         if version:
             print(f"{Colors.s} Odoo detected at base URL!")
-            response = input(f"{Colors.i} Use {base_url} as target? (y/n): ").strip().lower()
+            response = input(f"{Colors.i} Use {base_url} as target? [y/N]: ").strip().lower()
             if response == 'y' or response == 'yes':
                 print(f"{Colors.i} Updated target {Colors.FAIL}{base_url}{Colors.ENDC}")
                 args.url = base_url  # Update target for rest of script
