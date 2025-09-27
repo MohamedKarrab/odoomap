@@ -2,6 +2,7 @@ import argparse
 import sys
 import os
 import signal
+import getpass
 from . import connect
 from . import actions
 from . import __version__
@@ -45,7 +46,7 @@ def parse_arguments():
     # Authentication
     parser.add_argument('-D', '--database', help='Target database name')
     parser.add_argument('-U', '--username', help='Username for authentication')
-    parser.add_argument('-P', '--password', help='Password for authentication')
+    parser.add_argument('-P', '--password', nargs='?', const='', help='Password for authentication (prompts securely if no value provided)')
     
     # Operation modes
     parser.add_argument('-r', '--recon', action='store_true', help='Perform initial reconnaissance')
@@ -78,6 +79,14 @@ def parse_arguments():
     parser.add_argument('--list-plugins', action='store_true', help='List all available plugins with metadata')
 
     args = parser.parse_args()
+    
+    # Handle secure password prompt if -P was provided without a value
+    if args.password == '':
+        try:
+            args.password = getpass.getpass(f"{Colors.i} Enter password: ")
+        except KeyboardInterrupt:
+            console.print("\n[yellow][!][/yellow] [white]Password prompt cancelled. Exiting...[/white]")
+            sys.exit(0)
     
     # Validate URL requirement (not needed for --list-plugins)
     if not args.list_plugins and not args.url:

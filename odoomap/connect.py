@@ -3,13 +3,14 @@ import xmlrpc.client
 import requests
 import ssl
 import urllib3
-import os
+import json
 from bs4 import BeautifulSoup
 from odoomap.utils.colors import Colors
 from urllib.parse import urljoin
 from importlib.resources import files
-import json
-from .utils.brute_display import BruteDisplay
+from .utils.brute_display import BruteDisplay, console
+
+
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -139,13 +140,13 @@ class Connection:
         display = BruteDisplay(total)
         found_databases = []
 
-        print("")
+        console.print("")
         for db in databases:
             display.update(f"{Colors.t} {db}")
             try:
                 uid = self.common.authenticate(db, "test_user", "test_pass", {})
                 if uid == False:
-                    display.add_success(f"{db}")
+                    display.add_success(f"{db}\n")
                     found_databases.append(db)
             except Exception as e:
                 if "FATAL:  database" in str(e) and "does not exist" in str(e):
@@ -245,7 +246,7 @@ class Connection:
         total = len(user_pass_pairs)
         display = BruteDisplay(total)
 
-        print("")
+        console.print()
         for username, password in user_pass_pairs:
             display.update(f"{Colors.t} {username}:{password}")
             try:

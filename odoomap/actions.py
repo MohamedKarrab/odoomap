@@ -1,9 +1,7 @@
 import os
 import sys
 from importlib.resources import files
-from pathlib import Path
 from odoomap.utils.colors import Colors
-import xmlrpc.client
 from .utils.brute_display import BruteDisplay, console
 
 directory = os.getcwd()      
@@ -291,13 +289,15 @@ def bruteforce_master_password(connection, wordlist_file=None):
 
     display = BruteDisplay(total=len(passwords))
 
+    console.print()
     for pwd in passwords:
         display.update(f"{Colors.t} {pwd}")
         try:
             proxy = connection.master
             proxy.dump(pwd, "fake_db_73189")
-            display.add_success(pwd)
-            display.stop()
+
+            # If no exception: password is valid
+            display.add_success(f"{pwd}\n")
             return pwd
 
         except (ConnectionRefusedError, TimeoutError, OSError) as net_err:
@@ -307,7 +307,8 @@ def bruteforce_master_password(connection, wordlist_file=None):
             if "Fault 3:" in str(e) or "Access Denied" in str(e) or "Wrong master password" in str(e):
                 pass
             else:
-                display.add_success(pwd)
+                # If it's a different exception: password is valid
+                display.add_success(f"{pwd}\n")
                 display.stop()
                 return pwd
 
