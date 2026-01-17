@@ -178,6 +178,8 @@ options:
                         Bruteforce model names instead of listing them (default if listing fails)
   --model-file MODEL_FILE
                         File containing model names for bruteforcing (one per line)
+  --rate RATE           Maximum requests per second (default: unlimited, 0 = unlimited)
+  --jitter PERCENT      Add random jitter as percentage of rate (e.g., --jitter 20 for ±20%) to avoid pattern detection
   -b, --bruteforce      Bruteforce login credentials (requires -D)
   -w, --wordlist WORDLIST
                         Wordlist file for bruteforcing in user:pass format

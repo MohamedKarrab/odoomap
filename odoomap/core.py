@@ -62,6 +62,10 @@ def parse_arguments():
     parser.add_argument('-B', '--bruteforce-models', action='store_true', help='Bruteforce model names instead of listing them (default if listing fails)')
     parser.add_argument('--model-file', help='File containing model names for bruteforcing (one per line)')
     
+    # Rate limiting
+    parser.add_argument('--rate', type=float, help='Maximum requests per second (default: unlimited, 0 = unlimited)')
+    parser.add_argument('--jitter', type=float, metavar='PERCENT', help='Add random jitter as percentage of rate (e.g., --jitter 20 for ±20%%) to avoid pattern detection')
+    
     # Other operations
     parser.add_argument('-b', '--bruteforce', action='store_true', help='Bruteforce login credentials (requires -D)')
     parser.add_argument('-w', '--wordlist', help='Wordlist file for bruteforcing in user:pass format')
@@ -138,12 +142,18 @@ def main():
 
     print(banner())
     print(f"{Colors.i} Target: {Colors.FAIL}{args.url}{Colors.ENDC}")
+    
+    # Display rate limiting info
+    if args.rate:
+        rate_info = f"{args.rate} req/s"
+        if args.jitter:
+            rate_info += f" (±{args.jitter}% jitter)"
+        print(f"{Colors.i} Rate limit: {rate_info}")
 
-    # Initialize connection
-    connection = connect.Connection(host=args.url)
+    # Initialize connection WITH rate limiting
+    connection = connect.Connection(host=args.url, rate_limit=args.rate, jitter=args.jitter)
 
     # --- Odoo check before authentication ---
-    connection = connect.Connection(host=args.url)
     version = connection.get_version()
     if not version:
         # Try base URL if the given one fails
@@ -152,7 +162,7 @@ def main():
         if base_url.endswith('//'):
             base_url = base_url[:-1]
         print(f"{Colors.w} No Odoo detected at {args.url}, trying base URL: {base_url}")
-        connection = connect.Connection(host=base_url)
+        connection = connect.Connection(host=base_url, rate_limit=args.rate, jitter=args.jitter)
         version = connection.get_version()
         if version:
             print(f"{Colors.s} Odoo detected at base URL!")

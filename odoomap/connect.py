@@ -4,6 +4,8 @@ import requests
 import ssl
 import urllib3
 import json
+import time
+import random
 from bs4 import BeautifulSoup
 from odoomap.utils.colors import Colors
 from urllib.parse import urljoin
@@ -15,12 +17,45 @@ from .utils.brute_display import BruteDisplay, console
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+class ThrottledServerProxy:
+    """Wrapper around xmlrpc ServerProxy that auto-throttles all calls"""
+    def __init__(self, uri, context, throttle_func):
+        self._proxy = xmlrpc.client.ServerProxy(uri, context=context)
+        self._throttle = throttle_func
+    
+    def __getattr__(self, name):
+        attr = getattr(self._proxy, name)
+        if callable(attr):
+            def wrapped(*args, **kwargs):
+                self._throttle()
+                return attr(*args, **kwargs)
+            return wrapped
+        return attr
+
+class ThrottledSession(requests.Session):
+    """Wrapper around requests.Session that auto-throttles all HTTP calls"""
+    def __init__(self, throttle_func):
+        super().__init__()
+        self._throttle = throttle_func
+    
+    def request(self, method, url, **kwargs):
+        self._throttle()
+        return super().request(method, url, **kwargs)
+
 class Connection:
-    def __init__(self, host, ssl_verify=False):
+    def __init__(self, host, ssl_verify=False, rate_limit=None, jitter=None):
         self.host = host if host.startswith(('http://', 'https://')) else f"https://{host}"
         self.ssl_verify = ssl_verify
-        self.session = requests.Session()
+        
+        # Rate limiting config
+        self.rate_limit = rate_limit  # requests per second (None = unlimited)
+        self.jitter = jitter          # jitter percentage (e.g., 20 for ±20%)
+        self.last_request_time = 0
+        
+        # Use throttled session
+        self.session = ThrottledSession(self._throttle)
         self.session.verify = ssl_verify
+        
         self.common_endpoint = f"{self.host}/xmlrpc/2/common"
         self.object_endpoint = f"{self.host}/xmlrpc/2/object"
         self.master_password_endpoint = f"{self.host}/xmlrpc/2/db"
@@ -30,15 +65,35 @@ class Connection:
         self.password = None
         self.db = None
         
-        # Setup XML-RPC with context for SSL verification
-        if not ssl_verify:
-            ssl_context = ssl._create_unverified_context()
-            self.common = xmlrpc.client.ServerProxy(self.common_endpoint, context=ssl_context)
-            self.master = xmlrpc.client.ServerProxy(self.master_password_endpoint, context=ssl_context)
-            self.models = None  # Will be initialized after authentication
-        else:
-            self.common = xmlrpc.client.ServerProxy(self.common_endpoint)
-            self.models = None
+        # Setup XML-RPC with throttled wrappers
+        ssl_context = ssl._create_unverified_context() if not ssl_verify else None
+        self.common = ThrottledServerProxy(self.common_endpoint, ssl_context, self._throttle)
+        self.master = ThrottledServerProxy(self.master_password_endpoint, ssl_context, self._throttle)
+        self.models = None  # Will be initialized after authentication
+    
+    def _throttle(self):
+        """Apply rate limiting before making requests"""
+        if self.rate_limit and self.rate_limit > 0:
+            current_time = time.time()
+            
+            # Skip throttling on first request
+            if self.last_request_time == 0:
+                self.last_request_time = current_time
+                return
+            
+            time_since_last = current_time - self.last_request_time
+            min_interval = 1.0 / self.rate_limit
+            
+            # Add jitter to avoid pattern detection
+            if self.jitter and self.jitter > 0:
+                jitter_factor = 1.0 + (random.uniform(-self.jitter, self.jitter) / 100.0)
+                min_interval *= jitter_factor
+            
+            if time_since_last < min_interval:
+                sleep_time = min_interval - time_since_last
+                time.sleep(sleep_time)
+            
+            self.last_request_time = time.time()
     
     def get_version(self):
         """Get Odoo version information"""
@@ -53,8 +108,8 @@ class Connection:
         """List available databases"""
         try:
             db_endpoint = f"{self.host}/xmlrpc/2/db"
-            db_service = xmlrpc.client.ServerProxy(db_endpoint, 
-                                                context=ssl._create_unverified_context() if not self.ssl_verify else None)
+            ssl_context = ssl._create_unverified_context() if not self.ssl_verify else None
+            db_service = ThrottledServerProxy(db_endpoint, ssl_context, self._throttle)
             databases = db_service.list()
             return databases
         except Exception as e:
@@ -97,8 +152,8 @@ class Connection:
                 self.uid = uid
                 self.password = password
                 self.db = db
-                self.models = xmlrpc.client.ServerProxy(self.object_endpoint, 
-                                                     context=ssl._create_unverified_context() if not self.ssl_verify else None)
+                ssl_context = ssl._create_unverified_context() if not self.ssl_verify else None
+                self.models = ThrottledServerProxy(self.object_endpoint, ssl_context, self._throttle)
                 if verbose:
                     print(f"{Colors.s} Authentication successful (uid: {uid})")
                 return uid
