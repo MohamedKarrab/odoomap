@@ -128,7 +128,7 @@ def main():
 
     # Check if all authentication parameters are provided
     has_auth_params = args.username and args.password and args.database
-    auth_required_ops = args.enumerate or args.dump or args.permissions or args.bruteforce_models or args.fields
+    auth_required_ops = args.enumerate or args.dump or args.permissions or args.bruteforce_models or args.fields or args.modules
 
     # Check if any action is specified (besides recon)
     any_action = (args.enumerate or args.dump or args.bruteforce or args.permissions
@@ -171,7 +171,8 @@ def main():
             print(f"{Colors.e} The target does not appear to be running Odoo or is unreachable.")
             sys.exit(1)
     else:
-        print(f"{Colors.s} Odoo detected (version: {version})")
+        ver_str = version.get("server_version", version) if isinstance(version, dict) else version
+        print(f"{Colors.s} Odoo detected (version: {ver_str})")
 
     if args.bruteforce_master:
         wordlist = args.master_pass
@@ -197,6 +198,22 @@ def main():
                 print(f"{Colors.i}    - {db}{Colors.ENDC}")
         else:
             print(f"{Colors.w} No databases found or listing is disabled")
+
+        # Session info leak (pre-auth)
+        session_info = connection.get_session_info()
+        if session_info:
+            db_name = session_info.get("db")
+            server_ver = session_info.get("server_version")
+            sess_details = []
+            if db_name:
+                sess_details.append(f"db={db_name}")
+            if server_ver:
+                sess_details.append(f"version={server_ver}")
+            if sess_details:
+                print(f"{Colors.s} Session info leak: {', '.join(sess_details)}")
+
+        # Backup endpoint check
+        actions.check_backup_endpoint(connection)
 
         portal = connection.registration_check()
         apps = connection.default_apps_check()

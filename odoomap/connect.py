@@ -58,6 +58,7 @@ class Connection:
         
         # For authenticated operations
         self.uid = None
+        self.login = None
         self.password = None
         self.db = None
         
@@ -178,12 +179,57 @@ class Connection:
         return found
 
     def get_version(self):
-        """Get Odoo version information"""
+        """Get Odoo version information. Tries XML-RPC first, falls back to JSON-RPC."""
         try:
             version_info = self.common.version()
             return version_info
-        except Exception as e:
-            print(f"{Colors.e} Error getting version: {str(e)}")
+        except Exception:
+            pass
+
+        try:
+            result = self.jsonrpc("/web/webclient/version_info")
+            if result:
+                return result
+        except Exception:
+            pass
+
+        print(f"{Colors.e} Error getting version via XML-RPC and JSON-RPC")
+        return None
+
+    def get_major_version(self):
+        """Get the major Odoo version as an integer (e.g. 18).
+
+        Uses server_version_info array when available for accuracy,
+        falls back to regex on the version string.
+        """
+        version_info = self.get_version()
+        if not version_info:
+            return None
+
+        # Prefer the array form
+        info_arr = version_info.get("server_version_info")
+        if info_arr and isinstance(info_arr, (list, tuple)) and len(info_arr) > 0:
+            try:
+                return int(info_arr[0])
+            except (ValueError, TypeError):
+                pass
+
+        # Fallback to regex
+        import re
+        raw = version_info.get("server_version", "")
+        match = re.search(r'(\d+)', str(raw))
+        return int(match.group(1)) if match else None
+
+    def get_session_info(self):
+        """Fetch pre-auth session info via /web/session/get_session_info.
+
+        Returns dict with database name, server version, and session metadata
+        even without authentication. Returns None on failure.
+        """
+        try:
+            result = self.jsonrpc("/web/session/get_session_info")
+            return result
+        except Exception:
             return None
     
     def get_databases(self):
@@ -225,34 +271,80 @@ class Connection:
         return []
     
     def authenticate(self, db, username, password, verbose=True):
-        """Authenticate to Odoo"""
+        """Authenticate to Odoo. Tries XML-RPC first, falls back to JSON-RPC."""
         if verbose:
             print(f"{Colors.i} Authenticating as {username} on {db}...")
+
+        # Try XML-RPC first
         try:
             uid = self.common.authenticate(db, username, password, {})
             if uid:
-                self.uid = uid
-                self.password = password
-                self.db = db
-                ssl_context = ssl._create_unverified_context() if not self.ssl_verify else None
-                self.models = ThrottledServerProxy(self.object_endpoint, ssl_context, self._throttle)
+                self._set_auth(db, username, password, uid)
                 if verbose:
                     print(f"{Colors.s} Authentication successful (uid: {uid})")
                 return uid
-            
             else:
                 if verbose:
                     print(f"{Colors.e} Authentication failed")
-            return None
-        
+                return None
         except Exception as e:
             if "failed: FATAL:  database" in str(e) and "does not exist" in str(e):
                 if verbose:
                     print(f"{Colors.e} Authentication failed: database {Colors.FAIL}{db}{Colors.ENDC} does not exist")
-            else:
-                if verbose:
-                    print(f"{Colors.e} Authentication error: {str(e)}")
-            return None
+                return None
+            # XML-RPC failed for other reason — try JSON-RPC
+            if verbose:
+                print(f"{Colors.i} XML-RPC auth failed, trying JSON-RPC...")
+
+        # Fallback to JSON-RPC
+        result = self.json_authenticate(db, username, password)
+        if result and result.get("uid"):
+            uid = result["uid"]
+            self._set_auth(db, username, password, uid)
+            if verbose:
+                print(f"{Colors.s} Authentication successful via JSON-RPC (uid: {uid})")
+            return uid
+
+        if verbose:
+            print(f"{Colors.e} Authentication failed")
+        return None
+
+    def _set_auth(self, db, username, password, uid):
+        """Store auth state and initialize model proxy."""
+        self.uid = uid
+        self.login = username
+        self.password = password
+        self.db = db
+        ssl_context = ssl._create_unverified_context() if not self.ssl_verify else None
+        self.models = ThrottledServerProxy(self.object_endpoint, ssl_context, self._throttle)
+
+    def execute_kw(self, model, method, args=None, kwargs=None):
+        """Execute an ORM method with XML-RPC, falling back to JSON-RPC.
+
+        Requires prior authentication (self.uid must be set).
+        """
+        if not self.uid:
+            raise Exception("Not authenticated")
+
+        # Try XML-RPC first
+        if self.models:
+            try:
+                return self.models.execute_kw(
+                    self.db, self.uid, self.password,
+                    model, method, args or [], kwargs or {}
+                )
+            except Exception:
+                pass
+
+        # Fallback to JSON-RPC (establish session if needed)
+        try:
+            return self.json_call_kw(model, method, args, kwargs)
+        except Exception as e:
+            if "Session expired" in str(e) or "session" in str(e).lower():
+                # No JSON-RPC session — create one and retry
+                self.json_authenticate(self.db, self.login, self.password)
+                return self.json_call_kw(model, method, args, kwargs)
+            raise
     
     def sanitize_for_xmlrpc(self, text):
         """Sanitize text to be used in XML-RPC calls."""

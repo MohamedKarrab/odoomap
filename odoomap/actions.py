@@ -374,6 +374,22 @@ def enumerate_modules(connection):
     return detected
 
 
+def check_backup_endpoint(connection):
+    """Check if /web/database/backup is accessible (more dangerous than manager page)."""
+    try:
+        url = f"{connection.host}/web/database/backup"
+        resp = connection.session.get(url, timeout=10)
+        if resp.status_code == 200 and "backup" in resp.text.lower():
+            print(f"{Colors.s} Database backup endpoint accessible: {Colors.FAIL}{url}{Colors.ENDC}")
+            return True
+        else:
+            print(f"{Colors.w} Database backup endpoint not accessible")
+            return False
+    except Exception as e:
+        print(f"{Colors.e} Error checking backup endpoint: {e}")
+        return False
+
+
 def enumerate_fields(connection, model_name):
     if not connection.uid:
         print(f"{Colors.e} Not authenticated. Please authenticate first.")
